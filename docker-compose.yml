@@ -1,6 +1,6 @@
 services:
   frontend:
-    image: inductiveautomation/ignition:8.1.45
+    image: inductiveautomation/ignition:8.1.48
     hostname: frontend
     ports:
       - 9088:8088
@@ -24,10 +24,10 @@ services:
       -m 2048
       -r /restore.gwbk
   backend:
-    image: inductiveautomation/ignition:8.1.45
+    image: inductiveautomation/ignition:8.1.48
     hostname: backend
     ports:
-      - 9090:8088
+      - 9089:8088
     volumes:
       - backend-data:/usr/local/bin/ignition/data
       - ./gw-init/backend.gwbk:/restore.gwbk
@@ -44,21 +44,21 @@ services:
       -n backend-gateway
       -m 2048
       -r /restore.gwbk
-  db:
-    image: mariadb:10.10.2
+  sqlserver:
+    image: mcr.microsoft.com/mssql/server:2019-latest
     ports:
-      - 3306:3306
+      - 1433:1433
+    environment:
+      - ACCEPT_EULA=Y
+      - MSSQL_SA_PASSWORD=yourStrong(!)Password
+      - MSSQL_PID=Developer
     volumes:
-      - db-data:/var/lib/mysql
+      - sqlserver-data:/bar/opt/mssql
+    restart: always
     networks:
       backend-network:
         aliases:
           - main-db
-    environment:
-      - MARIADB_ROOT_PASSWORD=ignition
-      - MARIADB_DATABASE=ignition
-      - MARIADB_USER=ignition
-      - MARIADB_PASSWORD=ignition
   smtp:
     image: dockage/mailcatcher:0.8.2
     ports:
@@ -78,4 +78,4 @@ networks:
 volumes:
   frontend-data:
   backend-data:
-  db-data:
+  sqlserver-data:
