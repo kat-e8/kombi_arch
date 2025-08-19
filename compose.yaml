@@ -1,7 +1,33 @@
 services:
+  edge:
+    image: inductiveautomation/ignition:8.1.48
+    hostname: edge
+    container_name: edge
+    ports:
+      - 9089:8088
+    volumes:
+      - edge-data:/usr/local/bin/ignition/data
+     # - ./gw-init/edge.gwbk:/restore.gwbk
+     # - ./gw-init/edge-uuid.txt:/usr/local/bin/ignition/data/.uuid
+     # - ./gw-init/edge-metro-keystore:/usr/local/bin/ignition/data/local/metro-keystore
+      - ./pylib/speciallibrary.py:/usr/local/bin/ignition/user-lib/pylib/speciallibrary.py
+    networks:
+      - edge-network
+    secrets:
+      - gateway-password
+    environment:
+      - IGNITION_EDITION=edge
+      - GATEWAY_ADMIN_PASSWORD_FILE=/run/secrets/gateway-password
+      - ACCEPT_IGNITION_EULA=Y
+     # - GATEWAY_MODULES_ENABLED=alarm-notification,logix-driver,opc-ua,tag-historian
+    command: >
+      -n edge-gateway
+      -m 2048
+     # -r /restore.gwbk
   frontend:
-    image: inductiveautomation/ignition:8.1.45
+    image: inductiveautomation/ignition:8.1.48
     hostname: frontend
+    container_name: frontend
     ports:
       - 9088:8088
     volumes:
@@ -18,14 +44,15 @@ services:
       - IGNITION_EDITION=standard
       - GATEWAY_ADMIN_PASSWORD_FILE=/run/secrets/gateway-password
       - ACCEPT_IGNITION_EULA=Y
-      - GATEWAY_MODULES_ENABLED=alarm-notification,logix-driver,opc-ua,tag-historian
+     # - GATEWAY_MODULES_ENABLED=alarm-notification,logix-driver,opc-ua,tag-historian
     command: >
       -n frontend-gateway
       -m 2048
       -r /restore.gwbk
   backend:
-    image: inductiveautomation/ignition:8.1.45
+    image: inductiveautomation/ignition:8.1.48
     hostname: backend
+    container_name: backend
     ports:
       - 9090:8088
     volumes:
@@ -36,31 +63,34 @@ services:
     networks:
       - frontend-network
       - backend-network
+      - edge-network
     environment:
       - IGNITION_EDITION=standard
       - GATEWAY_ADMIN_PASSWORD=gagoopane
       - ACCEPT_IGNITION_EULA=Y
     command: >
       -n backend-gateway
-      -m 2048
+      -m 1028
       -r /restore.gwbk
-  db:
-    image: mariadb:10.10.2
+  sqldb:
+    image: mcr.microsoft.com/mssql/server:2019-latest
+    environment:
+      - ACCEPT_EULA=Y
+      - MSSQL_SA_PASSWORD=yourStrong(!)Password
+      - MSSQL_PID=Developer
     ports:
-      - 3306:3306
+      - 1433:1433
     volumes:
-      - db-data:/var/lib/mysql
+      - sqldb-data:/var/opt/mssql
+    restart: always
+    container_name: sqldb
     networks:
       backend-network:
         aliases:
-          - main-db
-    environment:
-      - MARIADB_ROOT_PASSWORD=ignition
-      - MARIADB_DATABASE=ignition
-      - MARIADB_USER=ignition
-      - MARIADB_PASSWORD=ignition
+          - main-db  
   smtp:
     image: dockage/mailcatcher:0.8.2
+    container_name: smtp
     ports:
       - 1080:1080
       - 1025:1025
@@ -75,7 +105,9 @@ secrets:
 networks:
   frontend-network:
   backend-network:
+  edge-network:
 volumes:
   frontend-data:
   backend-data:
-  db-data:
+  edge-data:
+  sqldb-data:
